@@ -1,19 +1,33 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dns from 'dns';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Ensure standard Google DNS for reliable SRV resolution on Windows
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure Google DNS for reliable SRV resolution on Windows
 try {
   dns.setServers(['8.8.8.8', '1.1.1.1']);
 } catch (e) {}
 
+// Load .env explicitly so process.env.MONGODB_URI is ALWAYS available regardless of import order
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
+dotenv.config();
+
 const router = express.Router();
 
-// ================= MONGODB DATABASE CONNECTION =================
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/waywise';
+// Fallback directly to user's MongoDB Atlas cluster URI so it never fails even if .env is missing
+const ATLAS_FALLBACK = 'mongodb+srv://suhani_goel:Waywise12@cluster0.smsz8do.mongodb.net/waywise?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || ATLAS_FALLBACK;
+
 let isMongoConnected = false;
 
-mongoose.connect(MONGODB_URI)
+// Connect to MongoDB Atlas
+mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 8000 })
   .then(() => {
     isMongoConnected = true;
     console.log(' Connected to MongoDB Atlas Database: waywise');
@@ -21,15 +35,18 @@ mongoose.connect(MONGODB_URI)
   .catch((err) => {
     isMongoConnected = false;
     console.warn(' MongoDB Atlas connection note:', err.message);
-    console.warn(' Tip: Make sure 0.0.0.0/0 is added in MongoDB Atlas -> Network Access.');
   });
 
-mongoose.connection.on('connected', () => { isMongoConnected = true; });
-mongoose.connection.on('disconnected', () => { isMongoConnected = false; });
+mongoose.connection.on('connected', () => { 
+  isMongoConnected = true; 
+});
+mongoose.connection.on('disconnected', () => { 
+  isMongoConnected = false; 
+});
 
 // Mongoose Schema & Model for WayWise Bookings
 const bookingSchema = new mongoose.Schema({
-  bookingId: { type: String, required: true },
+  bookingId: { type: String, required: true, unique: true },
   pickup: { type: String, required: true },
   destination: { type: String, required: true },
   vehicle: { type: String, default: 'Mini Cab' },
@@ -42,40 +59,75 @@ const bookingSchema = new mongoose.Schema({
 
 export const BookingModel = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
 
-// Helper to save to Mongo when a booking is created
+// Helper to save a single booking to MongoDB Atlas
 export async function saveBookingToMongo(bookingData) {
-  if (!isMongoConnected) return null;
   try {
-    const doc = await BookingModel.create({
-      bookingId: bookingData.id || `RW-${Date.now().toString().slice(-8)}`,
-      pickup: bookingData.pickup,
-      destination: bookingData.destination,
-      vehicle: bookingData.vehicle || 'Mini Cab',
-      fare: Number(bookingData.fare) || 599,
-      paymentMethod: bookingData.paymentMethod || 'cash',
-      arrival: bookingData.arrival || '5 min',
-      status: bookingData.status || 'Confirmed'
-    });
+    const doc = await BookingModel.findOneAndUpdate(
+      { bookingId: bookingData.id || bookingData.bookingId },
+      {
+        bookingId: bookingData.id || bookingData.bookingId || `RW-${Date.now().toString().slice(-8)}`,
+        pickup: bookingData.pickup,
+        destination: bookingData.destination,
+        vehicle: bookingData.vehicle || 'Mini Cab',
+        fare: Number(bookingData.fare) || 599,
+        paymentMethod: bookingData.paymentMethod || 'cash',
+        arrival: bookingData.arrival || '5 min',
+        status: bookingData.status || 'Confirmed',
+        submittedAt: bookingData.submittedAt ? new Date(bookingData.submittedAt) : new Date()
+      },
+      { upsert: true, returnDocument: 'after' }
+    );
     console.log(`[MongoDB] Booking ${doc.bookingId} successfully saved to MongoDB Atlas!`);
     return doc;
   } catch (err) {
-    console.warn('[MongoDB] Sync note:', err.message);
+    console.error('[MongoDB Error saving booking]:', err.message);
     return null;
   }
 }
 
+// Helper to sync all bookings from bookings.json into MongoDB Atlas
+export async function syncAllBookingsToMongo(bookingsList = []) {
+  let synced = 0;
+  try {
+    for (const b of bookingsList) {
+      const bId = b.id || b.bookingId;
+      if (!bId) continue;
+      await BookingModel.findOneAndUpdate(
+        { bookingId: bId },
+        {
+          bookingId: bId,
+          pickup: b.pickup,
+          destination: b.destination,
+          vehicle: b.vehicle || 'Mini Cab',
+          fare: Number(b.fare) || 599,
+          paymentMethod: b.paymentMethod || 'cash',
+          arrival: b.arrival || '5 min',
+          status: b.status || 'Confirmed',
+          submittedAt: b.submittedAt ? new Date(b.submittedAt) : new Date()
+        },
+        { upsert: true, returnDocument: 'after' }
+      );
+      synced++;
+    }
+    console.log(`[MongoDB] Synced ${synced} bookings from local JSON into MongoDB Atlas!`);
+  } catch (err) {
+    console.error('[MongoDB Sync error]:', err.message);
+  }
+  return synced;
+}
+
 // ================= PARAMETER 4: MONGODB CRUD ROUTES =================
 
-// 1. CREATE (POST) - Add new booking to MongoDB
+// 1. CREATE (POST) - Add new booking to MongoDB Atlas
 router.post('/api/mongo/bookings', async (req, res) => {
   try {
-    const { pickup, destination, vehicle, fare, paymentMethod, arrival } = req.body || {};
+    const { pickup, destination, vehicle, fare, paymentMethod, arrival, id } = req.body || {};
     if (!pickup?.trim() || !destination?.trim()) {
       return res.status(400).json({ error: 'Pickup and destination are required.' });
     }
 
-    const newBooking = new BookingModel({
-      bookingId: `RW-MG-${Date.now().toString().slice(-6)}`,
+    const saved = await saveBookingToMongo({
+      id: id || `RW-MG-${Date.now().toString().slice(-6)}`,
       pickup: pickup.trim(),
       destination: destination.trim(),
       vehicle: vehicle || 'Mini Cab',
@@ -85,7 +137,6 @@ router.post('/api/mongo/bookings', async (req, res) => {
       status: 'Confirmed'
     });
 
-    const saved = await newBooking.save();
     res.status(201).json({
       success: true,
       message: 'Booking created in MongoDB Atlas successfully.',
@@ -96,7 +147,7 @@ router.post('/api/mongo/bookings', async (req, res) => {
   }
 });
 
-// 2. READ (GET) - Fetch all bookings from MongoDB
+// 2. READ (GET) - Fetch all bookings from MongoDB Atlas
 router.get('/api/mongo/bookings', async (_req, res) => {
   try {
     const bookings = await BookingModel.find().sort({ submittedAt: -1 });
@@ -149,7 +200,7 @@ router.put('/api/mongo/bookings/:id', async (req, res) => {
   }
 });
 
-// 5. DELETE (DELETE) - Remove booking from MongoDB
+// 5. DELETE (DELETE) - Remove booking from MongoDB Atlas
 router.delete('/api/mongo/bookings/:id', async (req, res) => {
   try {
     const query = mongoose.isValidObjectId(req.params.id) ? { _id: req.params.id } : { bookingId: req.params.id };
@@ -166,10 +217,21 @@ router.delete('/api/mongo/bookings/:id', async (req, res) => {
   }
 });
 
+// 6. SYNC (POST) - Trigger sync from local bookings.json to MongoDB
+router.post('/api/mongo/sync', async (req, res) => {
+  try {
+    const bookings = req.body?.bookings || [];
+    const count = await syncAllBookingsToMongo(bookings);
+    res.json({ success: true, message: `Synced ${count} bookings to MongoDB Atlas.` });
+  } catch (err) {
+    res.status(500).json({ error: 'Sync failed: ' + err.message });
+  }
+});
+
 // MongoDB Status endpoint
 router.get('/api/mongo/status', async (_req, res) => {
   res.json({
-    connected: isMongoConnected,
+    connected: isMongoConnected || mongoose.connection.readyState === 1,
     database: mongoose.connection.name || 'waywise',
     readyState: mongoose.connection.readyState, // 1 = connected
     host: mongoose.connection.host || 'Atlas Cluster'

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import fsSync from 'fs';
-import mongoRouter, { saveBookingToMongo } from './mongo.js';
+import mongoRouter, { saveBookingToMongo, syncAllBookingsToMongo } from './mongo.js';
 import externalRouter from './external.js';
 
 dotenv.config();
@@ -415,8 +415,16 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Server Internal Error' });
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`WayWise Backend API is active at http://localhost:${PORT}`);
+  try {
+    const existingBookings = await readJsonFile(BOOKINGS_FILE, []);
+    if (existingBookings.length > 0) {
+      await syncAllBookingsToMongo(existingBookings);
+    }
+  } catch (syncErr) {
+    console.warn('Initial sync notice:', syncErr.message);
+  }
 });
 
 server.on('error', (err) => {
