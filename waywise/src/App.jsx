@@ -62,6 +62,7 @@ export default function App() {
   // Saved places & Bookings from server JSON
   const [saved, setSaved] = useState(fallbackPlaces);
   const [bookedRides, setBookedRides] = useState([]);
+  const [liveWeather, setLiveWeather] = useState(null);
   
   // Modals
   const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
@@ -288,6 +289,12 @@ export default function App() {
         </nav>
 
         <div className="topbar-actions">
+          {liveWeather && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '20px', padding: '4px 10px', fontWeight: 600 }} title="Live External Weather API (Open-Meteo)">
+              <span>☀️</span>
+              <span>{liveWeather.temperatureC}°C Gurugram</span>
+            </div>
+          )}
           <button className="topbar-book-btn" onClick={() => go('cab-booking')}>
             <Zap size={14} /> Quick Book
           </button>
