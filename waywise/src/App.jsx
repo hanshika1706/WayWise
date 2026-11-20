@@ -142,7 +142,6 @@ export default function App() {
   // Saved places & Bookings from server JSON
   const [saved, setSaved] = useState(fallbackPlaces);
   const [bookedRides, setBookedRides] = useState([]);
-
   // Cab Vehicle Selection State
   const [selectedVehicle, setSelectedVehicle] = useState('bike');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -165,6 +164,8 @@ export default function App() {
     setBreakdownModalData(data);
     setShowBreakdownModal(true);
   }
+
+  const [liveWeather, setLiveWeather] = useState(null);
   
   // Modals
   const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
@@ -238,6 +239,13 @@ export default function App() {
             return Array.from(map.values());
           });
         }
+      })
+      .catch(() => {});
+    // Fetch live commute weather via External API (Parameter 1)
+    fetch('/api/external/weather')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success) setLiveWeather(data);
       })
       .catch(() => {});
   }, []);
@@ -418,6 +426,20 @@ export default function App() {
             <UserRound size={14} /> Profile
           </button>
         </nav>
+
+
+        <div className="topbar-actions">
+          {liveWeather && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '20px', padding: '4px 10px', fontWeight: 600 }} title="Live External Weather API (Open-Meteo)">
+              <span>☀️</span>
+              <span>{liveWeather.temperatureC}°C Gurugram</span>
+            </div>
+          )}
+          <button className="topbar-book-btn" onClick={() => go('cab-booking')}>
+            <Zap size={14} /> Quick Book
+          </button>
+        </div>
+
       </header>
 
       {/* MAIN CONTENT AREA */}

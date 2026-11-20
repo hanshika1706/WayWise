@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import fsSync from 'fs';
+import mongoRouter, { saveBookingToMongo } from './mongo.js';
+import externalRouter from './external.js';
 
 dotenv.config();
 const app = express();
@@ -27,6 +29,10 @@ app.use((_req, res, next) => {
 });
 
 app.use(express.json());
+
+// Mount MongoDB CRUD Routes and External API Routes
+app.use(mongoRouter);
+app.use(externalRouter);
 
 // Default Initial Seed Data
 const defaultPlaces = [
@@ -206,13 +212,18 @@ app.post('/api/bookings', async (req, res) => {
       submittedAt: new Date().toISOString()
     };
 
+    // 1. Save to local JSON file (Parameter 3)
     const bookings = await readJsonFile(BOOKINGS_FILE, []);
     bookings.unshift(newBooking);
     await writeJsonFile(BOOKINGS_FILE, bookings);
 
+    // 2. Also persist to MongoDB Atlas if connected (Parameter 4)
+    const mongoDoc = await saveBookingToMongo(newBooking);
+
     res.status(201).json({
       success: true,
-      message: 'Booking successfully saved to server/data/bookings.json',
+      message: 'Booking successfully saved to server/data/bookings.json' + (mongoDoc ? ' and MongoDB Atlas' : ''),
+      savedToMongoDB: Boolean(mongoDoc),
       booking: newBooking
     });
   } catch (err) {
