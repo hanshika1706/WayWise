@@ -325,6 +325,7 @@ export default function App() {
       submittedAt: new Date().toISOString()
     };
     try {
+      debugger; // Browser pauses here automatically
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

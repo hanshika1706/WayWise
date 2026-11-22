@@ -130,6 +130,7 @@ async function handleBooking() {
 
     // 2. Safely attempt to persist to Express API (server/data/bookings.json)
     try {
+      debugger; // Browser pauses here automatically
       const response = await fetch("/api/bookings", {
         method: "POST",
         headers: {

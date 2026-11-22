@@ -88,6 +88,50 @@ async function writeJsonFile(filePath, data) {
 
 // ================= SYSTEM & HEALTH =================
 
+// Root Landing Dashboard (Prevents "Cannot GET /" when visiting http://localhost:4000)
+app.get('/', (_req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>RideWise Backend API</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px 20px; display: flex; justify-content: center; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; max-width: 680px; width: 100%; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 13px; margin-bottom: 16px; }
+        h1 { margin: 0 0 10px; font-size: 26px; color: #ffffff; }
+        p { color: #94a3b8; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+        .endpoints { display: grid; gap: 10px; margin-bottom: 24px; }
+        .ep { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; text-decoration: none; color: #38bdf8; font-weight: 500; font-size: 14px; transition: all 0.2s; }
+        .ep:hover { border-color: #38bdf8; background: #1e293b; }
+        .ep span { color: #64748b; font-size: 12px; }
+        .btn-ui { display: block; text-align: center; background: #2563eb; color: #ffffff; text-decoration: none; padding: 14px; border-radius: 10px; font-weight: 600; font-size: 15px; transition: background 0.2s; }
+        .btn-ui:hover { background: #1d4ed8; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="badge">● Backend Active & Running (Port ${PORT})</div>
+        <h1>RideWise Mobility Backend API</h1>
+        <p>Your Node & Express REST API server is online and healthy. Choose an endpoint below to inspect or open the frontend application:</p>
+        
+        <div class="endpoints">
+          <a class="ep" href="/api/health" target="_blank"><span>Health Check & Stats</span> /api/health →</a>
+          <a class="ep" href="/api/external/weather" target="_blank"><span>Parameter 1: External Weather API</span> /api/external/weather →</a>
+          <a class="ep" href="/api/bookings" target="_blank"><span>Parameter 3: Local JSON Bookings</span> /api/bookings →</a>
+          <a class="ep" href="/api/mongo/status" target="_blank"><span>Parameter 4: MongoDB Atlas Status</span> /api/mongo/status →</a>
+          <a class="ep" href="/api/mongo/bookings" target="_blank"><span>Parameter 4: MongoDB Atlas Bookings</span> /api/mongo/bookings →</a>
+        </div>
+
+        <a class="btn-ui" href="http://localhost:5173" target="_blank">🚀 Open RideWise Frontend App (http://localhost:5173)</a>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 app.get('/api/health', async (_req, res) => {
   const bookings = await readJsonFile(BOOKINGS_FILE, []);
   const places = await readJsonFile(PLACES_FILE, defaultPlaces);
