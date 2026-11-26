@@ -52,7 +52,7 @@ All form submissions are permanently stored in formatted `.json` files on disk:
 ## 📸 Screenshots
 
 ### Homepage
-![WayWise Homepage](waywise/src/utils/screenshots/homepage.png)
+![Homepage](waywise/src/utils/screenshots/homepage.png)
 
 ### Live Map
 ![WayWise Live Map](waywise/src/utils/screenshots/livemap.png)
