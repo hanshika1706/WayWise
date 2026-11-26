@@ -49,20 +49,23 @@ All form submissions are permanently stored in formatted `.json` files on disk:
 
 ---
 
+
 ## 📸 Screenshots
 
 ### Homepage
-![WayWise Homepage](screenshots/homepage.png)
+![WayWise Homepage](waywise/src/utils/screenshots/homepage.png)
 
-### Route Calculation
-![WayWise Route Map](screenshots/route-map.png)
+### Live Map
+![WayWise Live Map](waywise/src/utils/screenshots/livemap.png)
 
-### Fare Comparison
-![WayWise Fare Comparison](screenshots/fare-comparison.png)
+### Route Comparison
+![WayWise Routes](waywise/src/utils/screenshots/routes.png)
 
-### Booking
-![WayWise Booking](screenshots/booking.png)
+### Billing
+![WayWise Billing](waywise/src/utils/screenshots/billing.png)
 
+### About Us
+![About WayWise](waywise/src/utils/screenshots/about%20us.png)
 
 
 ## 🚀 Running the Project Locally
