@@ -49,7 +49,6 @@ All form submissions are permanently stored in formatted `.json` files on disk:
 
 ---
 
-
 ## 📸 Screenshots
 
 ### Homepage
